@@ -7,6 +7,7 @@ import json
 import pycurl
 import sys
 from threading import Timer
+from copy import deepcopy
 import time
 import datetime
 import signal
@@ -17,7 +18,7 @@ parser = argparse.ArgumentParser(description="record all blocks on Nano network"
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
 parser.add_argument('-s', '--save', type=int, help='Save blocks to disk how often (in seconds)', default=60)
-parser.add_argument('-d', '--delay', type=int, help='recorder delay (in seconds)', default=0.01)
+parser.add_argument('-d', '--delay', type=int, help='recorder delay (in seconds)', default=10)
 options = parser.parse_args()
 
 SAVE_EVERY_N = options.save
@@ -32,7 +33,7 @@ signaled = False
 savePause = False
 
 # global dicts for upcoming data
-blocks = {'times':{}}
+stats = {'times':{}}
 data = {'hashes':{}}
 
 def communicateNode(rpc_command):
@@ -69,8 +70,16 @@ def getConfirmations():
     return communicateNode(buildPost('confirmation_history'))
 
 # pull block counts from nano node
-def getBlocks():
-	return communicateNode(buildPost('block_count'))
+def getBlockCount():
+    return communicateNode({'action': "block_count", 'cemented': true})
+
+# pull active difficulty from nano node
+def getDifficulty():
+	return communicateNode(buildPost('active_difficulty'))
+
+# pull confirmation quorum from nano node
+def getQuorum():
+	return communicateNode(buildPost('confirmation_quorum'))
 
 # read json file and decode it
 def readJson(filename):
@@ -108,22 +117,22 @@ class RepeatedTimer(object):
         self.is_running = False
 
 def saveBlocks():
-    global blocks
+    global stats
     global data
     global savePause
 
     savePause = True
-    tempData = data
-    tempBlocks = blocks
+    tempData = deepcopy(data)
+    tempStats = deepcopy(stats)
     savePause = False
     writeJson('data.json', tempData)
-    writeJson('blockcounts.json', tempBlocks)
+    writeJson('stats.json', stats)
     # notify system when the data was last saved
     print ('saved data at: ' + time.strftime("%I:%M:%S"))
 
 # execute recording responsibilities
 def startRecording():
-    global blocks
+    global stats
     global data
     global savePause
 
@@ -134,15 +143,17 @@ def startRecording():
     if os.path.exists('data.json'):
         data = readJson('data.json')
 
-    if os.path.exists('blockcounts.json'):
-        blocks = readJson('blockcounts.json')
+    if os.path.exists('stats.json'):
+        blocks = readJson('stats.json')
 
     # record blocks continuously
     while True:
         # get current time
         currentTime = time.time()
         confirmations = getConfirmations()['confirmations']
-        newBlocks = getBlocks()
+        quorum = getQuorum()
+        newBlockCount = getBlockCount()
+        difficulty = getDifficulty()
 
         # wait if save is trying to make a copy
         while savePause:
@@ -155,7 +166,7 @@ def startRecording():
             data['hashes'][hash] = item
 
         # create new dictionary to format block counts
-        blocks['times'][currentTime] = {"time": currentTime, "checked": newBlocks['count'], "unchecked": newBlocks['unchecked']}
+        stats['times'][currentTime] = {"time": currentTime, "blocks": newBlockCount, "quorum": quorum, "difficulty": difficulty}
         print("recorded blocks. execution: %s seconds" % (time.time() - currentTime))
 
         time.sleep(RECORD_DELAY)
