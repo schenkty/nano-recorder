@@ -71,7 +71,7 @@ def getConfirmations():
 
 # pull block counts from nano node
 def getBlockCount():
-    return communicateNode({'action': "block_count", 'cemented': true})
+    return communicateNode({'action': "block_count", 'cemented': "true"})
 
 # pull active difficulty from nano node
 def getDifficulty():
