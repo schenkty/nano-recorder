@@ -40,8 +40,8 @@ process = True
 if os.path.exists('data.json'):
 	data = readJson('data.json')
 
-if os.path.exists('blockcounts.json'):
-	temp = readJson('blockcounts.json')
+if os.path.exists('stats.json'):
+	temp = readJson('stats.json')
 	print("Exporting Block Count Data")
 	exportData = []
 	processExport = True
@@ -49,7 +49,7 @@ if os.path.exists('blockcounts.json'):
 	while processExport:
 		if len(dataKeys) == 0:
 			# save changes
-			writeJson('blockcounts.export.json', exportData)
+			writeJson('stats.export.json', exportData)
 			processExport = False
 		for object in dataKeys:
 			objectData = temp['times'][object]
@@ -57,7 +57,7 @@ if os.path.exists('blockcounts.json'):
 			# remove object from data
 			dataKeys.remove(object)
 	# save changes
-	writeJson('blockcounts.export.json', exportData)
+	writeJson('stats.export.json', exportData)
 	print("Exporting Block Count Data Complete")
 	# release from mem
 	temp = None
