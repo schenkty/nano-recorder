@@ -17,7 +17,7 @@ import argparse
 parser = argparse.ArgumentParser(description="record all blocks on Nano network")
 parser.add_argument('-nu', '--node_url', type=str, help='Nano node url', default='127.0.0.1')
 parser.add_argument('-np', '--node_port', type=int, help='Nano node port', default=55000)
-parser.add_argument('-s', '--save', type=int, help='Save blocks to disk how often (in seconds)', default=60)
+parser.add_argument('-s', '--save', type=int, help='Save blocks to disk how often (in seconds)', default=30)
 parser.add_argument('-d', '--delay', type=int, help='recorder delay (in seconds)', default=10)
 options = parser.parse_args()
 
@@ -60,26 +60,6 @@ def communicateNode(rpc_command):
     body = buffer.getvalue()
     parsed_json = json.loads(body.decode('iso-8859-1'))
     return parsed_json
-
-# generate rpc commands
-def buildPost(command):
-    return {'action': command}
-
-# pull confirmation history from nano node
-def getConfirmations():
-    return communicateNode(buildPost('confirmation_history'))
-
-# pull block counts from nano node
-def getBlockCount():
-    return communicateNode({'action': "block_count", 'include_cemented': "true"})
-
-# pull active difficulty from nano node
-def getDifficulty():
-	return communicateNode(buildPost('active_difficulty'))
-
-# pull confirmation quorum from nano node
-def getQuorum():
-	return communicateNode(buildPost('confirmation_quorum'))
 
 # read json file and decode it
 def readJson(filename):
@@ -150,10 +130,13 @@ def startRecording():
     while True:
         # get current time
         currentTime = time.time()
-        confirmations = getConfirmations()['confirmations']
-        quorum = getQuorum()
-        newBlockCount = getBlockCount()
-        difficulty = getDifficulty()
+        confirmations = communicateNode({"action": "confirmation_history"})["confirmations"]
+        confActive = communicateNode({"action": 'confirmation_active'})
+        quorum = communicateNode({"action": "confirmation_quorum"})
+        blockCount = communicateNode({"action": "block_count", "include_cemented": "true"})
+        difficulty = communicateNode({"action":"active_difficulty","include_trend": 'true'})
+        stats = communicateNode({"action":"stats","type": "objects"})
+        bootstrap = communicateNode({"action": "bootstrap_status"})
 
         # wait if save is trying to make a copy
         while savePause:
@@ -166,7 +149,7 @@ def startRecording():
             data['hashes'][hash] = item
 
         # create new dictionary to format block counts
-        stats['times'][currentTime] = {"time": currentTime, "blocks": newBlockCount, "quorum": quorum, "difficulty": difficulty}
+        stats['times'][currentTime] = {"time": currentTime, "block_count": blockCount, "confirmation_quorum": quorum, "active_difficulty": difficulty, "confirmation_active": confActive, "stats": stats, "bootstrap_status": bootstrap_status}
         print("recorded blocks. execution: %s seconds" % (time.time() - currentTime))
 
         time.sleep(RECORD_DELAY)
