@@ -135,7 +135,8 @@ def startRecording():
         quorum = communicateNode({"action": "confirmation_quorum"})
         blockCount = communicateNode({"action": "block_count", "include_cemented": "true"})
         difficulty = communicateNode({"action":"active_difficulty","include_trend": 'true'})
-        stats = communicateNode({"action":"stats","type": "objects"})
+        statObjects = communicateNode({"action":"stats","type": "objects"})
+        statCounters = communicateNode({"action":"stats","type": "counters"})
         bootstrap = communicateNode({"action": "bootstrap_status"})
 
         # wait if save is trying to make a copy
@@ -149,7 +150,7 @@ def startRecording():
             data['hashes'][hash] = item
 
         # create new dictionary to format block counts
-        stats['times'][currentTime] = {"time": currentTime, "block_count": blockCount, "confirmation_quorum": quorum, "active_difficulty": difficulty, "confirmation_active": confActive, "stats": stats, "bootstrap_status": bootstrap_status}
+        stats['times'][currentTime] = {"time": currentTime, "block_count": blockCount, "confirmation_quorum": quorum, "active_difficulty": difficulty, "confirmation_active": confActive, "counters": statCounters, "objects": statObjects, "bootstrap_status": bootstrap_status}
         print("recorded blocks. execution: %s seconds" % (time.time() - currentTime))
 
         time.sleep(RECORD_DELAY)
